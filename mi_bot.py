@@ -1,38 +1,64 @@
 import requests
-import google.generativeai as genai
 import os
 
-# Secretos de GitHub
+# 1. Configuración de Llaves
 NEWS_API_KEY = os.getenv("NEWS_API_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
-def analizar_noticias():
+def consultar_gemini_directo(prompt):
+    """Conecta directamente a la API de Google sin usar librerías externas."""
+    # Usamos el modelo gemini-1.5-flash que es rápido y gratuito
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+    
+    headers = {'Content-Type': 'application/json'}
+    data = {
+        "contents": [{
+            "parts": [{"text": prompt}]
+        }]
+    }
+    
     try:
-        # 1. Obtener noticias
-        url = f"https://newsapi.org/v2/everything?q=NVIDIA&language=es&apiKey={NEWS_API_KEY}"
-        response = requests.get(url).json()
-        articulos = response.get('articles', [])[:3]
-        texto_noticias = "\n".join([f"- {a['title']}" for a in articulos]) if articulos else "Sin noticias hoy."
-
-        # 2. Configuración de IA con la nueva ruta de modelos
-        genai.configure(api_key=GEMINI_API_KEY)
-        
-        # Esta es la ruta completa que evita el error 404 en la v1beta
-        model = genai.GenerativeModel(model_name='models/gemini-1.5-flash')
-        
-        prompt = f"Analiza estas noticias de NVIDIA y dime si es momento de COMPRAR, VENDER o MANTENER. Sé breve:\n{texto_noticias}"
-        respuesta = model.generate_content(prompt)
-
-        # 3. Envío a Telegram
-        mensaje = f"🤖 **Análisis IA**\n\n{respuesta.text}"
-        api_url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-        requests.post(api_url, data={'chat_id': TELEGRAM_CHAT_ID, 'text': mensaje, 'parse_mode': 'Markdown'})
-        print("¡Proceso terminado con éxito!")
-
+        response = requests.post(url, headers=headers, json=data)
+        if response.status_code == 200:
+            return response.json()['candidates'][0]['content']['parts'][0]['text']
+        else:
+            return f"Error en Google: {response.text}"
     except Exception as e:
-        print(f"Error detectado: {e}")
+        return f"Error de conexión: {str(e)}"
+
+def correr_bot():
+    print("--- Iniciando Bot (Modo Directo) ---")
+    
+    # 2. Buscar Noticias
+    try:
+        print("Consultando noticias...")
+        url_news = f"https://newsapi.org/v2/everything?q=NVIDIA&language=es&sortBy=publishedAt&apiKey={NEWS_API_KEY}"
+        resp_news = requests.get(url_news).json()
+        articulos = resp_news.get('articles', [])[:3]
+        
+        if articulos:
+            texto = "\n".join([f"- {a['title']}" for a in articulos])
+        else:
+            texto = "No encontré noticias recientes."
+            
+    except Exception as e:
+        print(f"Falló NewsAPI: {e}")
+        texto = "No se pudieron obtener noticias."
+
+    # 3. Análisis con IA (Llamada directa)
+    print("Consultando IA...")
+    prompt = f"Actúa como analista financiero. Basado en estas noticias de NVIDIA: \n{texto}\n ¿Debo COMPRAR, VENDER o MANTENER? Responde en 2 lineas."
+    analisis = consultar_gemini_directo(prompt)
+
+    # 4. Enviar a Telegram
+    print("Enviando a Telegram...")
+    mensaje_final = f"🤖 **Reporte Financiero**\n\n{analisis}"
+    url_telegram = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+    requests.post(url_telegram, data={'chat_id': TELEGRAM_CHAT_ID, 'text': mensaje_final, 'parse_mode': 'Markdown'})
+    
+    print("¡Terminado!")
 
 if __name__ == "__main__":
-    analizar_noticias()
+    correr_bot()
