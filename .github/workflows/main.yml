@@ -1,8 +1,8 @@
 name: Bot Inversor Diario
 on:
   schedule:
-    - cron: '0 13 * * *' # Se ejecuta automáticamente a las 10:00 AM (Arg/Chile)
-  workflow_dispatch: # Esto nos permite probarlo manualmente ahora
+    - cron: '0 13 * * *' # Se ejecuta a las 10:00 AM (Argentina/Chile)
+  workflow_dispatch: # Permite ejecutarlo manualmente para probar
 
 jobs:
   build:
@@ -10,12 +10,15 @@ jobs:
     steps:
       - name: Descargar codigo
         uses: actions/checkout@v3
+
       - name: Configurar Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
-      - name: Instalar librerias
-        run: pip install requests google-generativeai
+
+      - name: Instalar librerias (Actualizado)
+        run: pip install --upgrade requests google-generativeai # Esto corrige el error 404
+
       - name: Ejecutar script
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
