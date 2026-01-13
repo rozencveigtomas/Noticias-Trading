@@ -1,8 +1,8 @@
 name: Bot Inversor Diario
 on:
   schedule:
-    - cron: '0 13 * * *' # Se ejecuta a las 10:00 AM (Argentina/Chile)
-  workflow_dispatch: # Permite ejecutarlo manualmente para probar
+    - cron: '0 13 * * *' 
+  workflow_dispatch:
 
 jobs:
   build:
@@ -16,8 +16,9 @@ jobs:
         with:
           python-version: '3.9'
 
-      - name: Instalar librerias (Actualizado)
-        run: pip install --upgrade requests google-generativeai
+      - name: Instalar librerias
+        run: pip install requests 
+        # Ya no instalamos google-generativeai porque daba errores
 
       - name: Ejecutar script
         env:
