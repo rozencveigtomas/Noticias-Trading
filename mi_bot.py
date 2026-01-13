@@ -1,34 +1,39 @@
 import requests
 import os
 
-# Leemos los secretos
-TOKEN = os.getenv("TELEGRAM_TOKEN")
-ID = os.getenv("TELEGRAM_CHAT_ID")
+# 1. Configuración de Llaves
+NEWS_API_KEY = os.getenv("NEWS_API_KEY")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
-def probar_telegram():
-    print("--- INICIANDO PRUEBA DE CONEXIÓN ---")
-    
-    # 1. Verificamos si los secretos llegaron al código
-    if not TOKEN:
-        print("ERROR: No encuentro el TELEGRAM_TOKEN")
-        return
-    if not ID:
-        print("ERROR: No encuentro el TELEGRAM_CHAT_ID")
-        return
-    
-    # Ocultamos parte del token por seguridad en el log
-    print(f"Usando Token: {TOKEN[:5]}... y Chat ID: {ID}")
+def consultar_gemini_directo(prompt):
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+    headers = {'Content-Type': 'application/json'}
+    data = {"contents": [{"parts": [{"text": prompt}]}]}
+    try:
+        response = requests.post(url, headers=headers, json=data)
+        if response.status_code == 200:
+            return response.json()['candidates'][0]['content']['parts'][0]['text']
+        return "Error en la IA."
+    except:
+        return "Error de conexión con la IA."
 
-    # 2. Intentamos enviar el mensaje
-    mensaje = "🔔 Hola! Si lees esto, la conexión funciona."
-    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-    
-    print("Enviando petición a Telegram...")
-    respuesta = requests.post(url, data={'chat_id': ID, 'text': mensaje})
-    
-    # 3. LO MÁS IMPORTANTE: Imprimimos qué respondió Telegram
-    print(f"Código de respuesta: {respuesta.status_code}")
-    print(f"RESPUESTA DE TELEGRAM: {respuesta.text}")
+def correr_bot():
+    # 2. Buscar Noticias de NVIDIA
+    url_news = f"https://newsapi.org/v2/everything?q=NVIDIA&language=es&sortBy=publishedAt&apiKey={NEWS_API_KEY}"
+    resp_news = requests.get(url_news).json()
+    articulos = resp_news.get('articles', [])[:3]
+    texto = "\n".join([f"- {a['title']}" for a in articulos]) if articulos else "Sin noticias hoy."
+
+    # 3. Análisis con IA
+    prompt = f"Analiza brevemente estas noticias de NVIDIA y recomienda COMPRAR, VENDER o MANTENER:\n{texto}"
+    analisis = consultar_gemini_directo(prompt)
+
+    # 4. Enviar a Telegram
+    mensaje_final = f"🤖 **Análisis de Inversión (NVIDIA)**\n\n{analisis}"
+    url_telegram = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+    requests.post(url_telegram, data={'chat_id': TELEGRAM_CHAT_ID, 'text': mensaje_final, 'parse_mode': 'Markdown'})
 
 if __name__ == "__main__":
-    probar_telegram()
+    correr_bot()
