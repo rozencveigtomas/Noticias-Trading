@@ -22,7 +22,7 @@ def analizar_noticias():
 
         # 2. IA de Gemini analiza
         genai.configure(api_key=GEMINI_API_KEY)
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('models/gemini-1.5-flash-latest')
         prompt = f"Analiza estas noticias de NVIDIA y dime si es momento de COMPRAR, VENDER o MANTENER. Sé muy breve y directo:\n{texto_noticias}"
         respuesta = model.generate_content(prompt)
 
