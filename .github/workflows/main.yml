@@ -17,7 +17,7 @@ jobs:
           python-version: '3.9'
 
       - name: Instalar librerias (Actualizado)
-        run: pip install --upgrade requests google-generativeai # Esto corrige el error 404
+        run: pip install --upgrade requests google-generativeai
 
       - name: Ejecutar script
         env:
